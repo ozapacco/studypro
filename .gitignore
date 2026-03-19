@@ -1,0 +1,11 @@
+node_modules
+.svelte-kit
+build
+.DS_Store
+coverage
+.env
+.env.local
+*.local
+.vercel
+*.log
+.DOCUS_*

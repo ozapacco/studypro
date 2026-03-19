@@ -1,0 +1,22 @@
+﻿{
+  "name": "Sistema de Estudos de Elite",
+  "short_name": "Estudos",
+  "description": "Sistema de estudos para concursos com repeticao espacada FSRS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
