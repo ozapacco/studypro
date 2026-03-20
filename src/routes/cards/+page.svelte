@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { onMount } from 'svelte';
   import { cardsStore, subjectsStore, toast } from '$lib/stores';
   import { db, initializeDatabase } from '$lib/db.js';
@@ -12,8 +12,6 @@
 
   let loading = true;
   let enableDraftSave = false;
-  let subjectsLoading = true;
-  let subjects = [];
   let topics = [];
 
   let form = {
@@ -61,11 +59,10 @@
       filters = { ...filters, ...filterDraft };
     }
 
-    subjects = await subjectsStore.load();
-    subjectsLoading = false;
+    const currentSubjects = await subjectsStore.load();
 
-    if (!form.subjectId && subjects.length > 0) {
-      form.subjectId = String(subjects[0].id);
+    if (!form.subjectId && currentSubjects.length > 0) {
+      form.subjectId = String(currentSubjects[0].id);
     }
     await loadTopics();
 
@@ -164,21 +161,21 @@
       <select
         class="input"
         bind:value={form.subjectId}
-        disabled={subjectsLoading}
+        disabled={loading || $subjectsStore.length === 0}
         on:change={async () => {
           await loadTopics();
         }}
       >
-        <option value="">Materia</option>
-        {#each subjects as subject}
-          <option value={subject.id}>{subject.name}</option>
+        <option value="">{loading ? 'Carregando...' : 'Materia'}</option>
+        {#each $subjectsStore as subject}
+          <option value={String(subject.id)}>{subject.name}</option>
         {/each}
       </select>
 
-      <select class="input" bind:value={form.topicId}>
-        <option value="">Topico</option>
+      <select class="input" bind:value={form.topicId} disabled={!form.subjectId || topics.length === 0}>
+        <option value="">{form.subjectId ? (topics.length === 0 ? 'Sem tópicos' : 'Topico') : 'Selecione materia'}</option>
         {#each topics as topic}
-          <option value={topic.id}>{topic.name}</option>
+          <option value={String(topic.id)}>{topic.name}</option>
         {/each}
       </select>
 
@@ -202,11 +199,9 @@
         />
         <select class="input w-44" bind:value={filters.subjectId} on:change={applyFilters}>
           <option value="">Todas materias</option>
-          {#if !subjectsLoading}
-            {#each subjects as subject}
-              <option value={subject.id}>{subject.name}</option>
-            {/each}
-          {/if}
+          {#each $subjectsStore as subject}
+            <option value={subject.id}>{subject.name}</option>
+          {/each}
         </select>
         <select class="input w-40" bind:value={filters.state} on:change={applyFilters}>
           <option value="">Todos estados</option>

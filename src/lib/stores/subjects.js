@@ -1,5 +1,5 @@
-﻿import { writable } from 'svelte/store';
-import { db } from '../db.js';
+﻿import { writable } from "svelte/store";
+import { db } from "../db.js";
 
 function createSubjectsStore() {
   const { subscribe, set } = writable([]);
@@ -8,9 +8,13 @@ function createSubjectsStore() {
     subscribe,
 
     async load() {
-      const subjects = await db.subjects.orderBy('order').toArray();
-      set(subjects);
-      return subjects;
+      const subjects = await db.subjects.orderBy("order").toArray();
+      const normalizedSubjects = subjects.map((s) => ({
+        ...s,
+        weight: Number(s.weight) || 0,
+      }));
+      set(normalizedSubjects);
+      return normalizedSubjects;
     },
 
     async add(subject) {
@@ -25,10 +29,10 @@ function createSubjectsStore() {
           learningCards: 0,
           newCards: 0,
           averageEase: 5,
-          retention: 0
+          retention: 0,
         },
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
       await this.load();
       return id;
@@ -41,31 +45,38 @@ function createSubjectsStore() {
     async update(id, changes) {
       await db.subjects.update(id, {
         ...changes,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
       await this.load();
     },
 
     async remove(id) {
       const subjectId = Number(id);
-      const topicIds = await db.topics.where('subjectId').equals(subjectId).primaryKeys();
+      const topicIds = await db.topics
+        .where("subjectId")
+        .equals(subjectId)
+        .primaryKeys();
       if (topicIds.length > 0) {
-        await db.lessons.where('topicId').anyOf(topicIds).delete();
+        await db.lessons.where("topicId").anyOf(topicIds).delete();
       }
-      await db.cards.where('subjectId').equals(subjectId).delete();
-      await db.topics.where('subjectId').equals(subjectId).delete();
+      await db.cards.where("subjectId").equals(subjectId).delete();
+      await db.topics.where("subjectId").equals(subjectId).delete();
       await db.subjects.delete(subjectId);
       await this.load();
     },
 
     async reorder(fromIndex, toIndex) {
-      const subjects = await db.subjects.orderBy('order').toArray();
+      const subjects = await db.subjects.orderBy("order").toArray();
       const [moved] = subjects.splice(fromIndex, 1);
       subjects.splice(toIndex, 0, moved);
 
-      await Promise.all(subjects.map((subject, index) => db.subjects.update(subject.id, { order: index + 1 })));
+      await Promise.all(
+        subjects.map((subject, index) =>
+          db.subjects.update(subject.id, { order: index + 1 }),
+        ),
+      );
       await this.load();
-    }
+    },
   };
 }
 

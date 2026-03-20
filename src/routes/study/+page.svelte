@@ -12,6 +12,8 @@
   import SessionProgress from '$lib/components/session/SessionProgress.svelte';
   import SessionTimer from '$lib/components/session/SessionTimer.svelte';
   import PreVoo from '$lib/components/study/PreVoo.svelte';
+  import FeynmanStep from '$lib/components/study/FeynmanStep.svelte';
+  import PomodoroBreakOverlay from '$lib/components/study/PomodoroBreakOverlay.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Card from '$lib/components/common/Card.svelte';
 
@@ -25,6 +27,21 @@
   let currentMission = null;
   let nextMission = null;
   let showSessionSummary = false;
+
+  // Feynman Mode state
+  let feynmanMode = false;
+  let showFeynman = false;
+  let feynmanExplanation = '';
+
+  // Pomodoro state
+  let pomodoroMode = true;
+  const POMODORO_DURATION = 25 * 60;
+  const SHORT_BREAK = 5 * 60;
+  const LONG_BREAK = 15 * 60;
+  let pomodoroCount = 0;
+  let showBreakOverlay = false;
+  let isLongBreak = false;
+  let pomodoroTimerCheck = false;
 
   onMount(async () => {
     await initializeDatabase();
@@ -121,6 +138,9 @@
     showPreVoo = false;
     await loadSession(preVooTopic?.topicId);
     setupKeyboard();
+    pomodoroMode = $configStore.preferences?.pomodoroEnabled ?? true;
+    feynmanMode = $configStore.preferences?.feynmanEnabled ?? false;
+    pomodoroTimerCheck = true;
   }
 
   onDestroy(() => {
@@ -142,6 +162,40 @@
       goto(`/study?topicId=${nextMission.topic.id}`);
     } else {
       goto('/');
+    }
+  }
+
+  // Pomodoro timer check
+  $: if (pomodoroMode && pomodoroTimerCheck && !showSessionSummary && !showPreVoo && $sessionStats?.totalTime) {
+    const elapsedMinutes = Math.floor($sessionStats.totalTime / 60000);
+    if (elapsedMinutes > 0 && elapsedMinutes % 25 === 0 && pomodoroCount < Math.floor(elapsedMinutes / 25)) {
+      pomodoroCount = Math.floor(elapsedMinutes / 25);
+      isLongBreak = pomodoroCount % 4 === 0;
+      showBreakOverlay = true;
+      sessionStore.pause();
+    }
+  }
+
+  function skipBreak() {
+    showBreakOverlay = false;
+    sessionStore.resume();
+  }
+
+  function startBreak() {
+    showBreakOverlay = false;
+    sessionStore.pause();
+    toast(isLongBreak ? 'Pausa de 15 minutos iniciada!' : 'Pausa de 5 minutos iniciada!', 'info');
+  }
+
+  function onFeynmanContinue(explanation) {
+    feynmanExplanation = explanation;
+    showFeynman = false;
+    sessionStore.showAnswer();
+  }
+
+  function triggerFeynman() {
+    if (feynmanMode && !$sessionStore.showingAnswer) {
+      showFeynman = true;
     }
   }
 </script>
@@ -186,6 +240,12 @@
           <SessionTimer />
           <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Tempo de foco</span>
         </div>
+        {#if pomodoroMode && pomodoroCount > 0}
+          <div class="flex items-center gap-1.5 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+            <span class="text-sm">🍅</span>
+            <span class="text-[10px] font-black text-amber-700 dark:text-amber-400">{pomodoroCount}</span>
+          </div>
+        {/if}
       </div>
 
       <div class="flex items-center gap-2">
@@ -218,18 +278,33 @@
         class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-scale-in"
         in:fly={{ y: 40, duration: 600 }}
       >
-        <div class="text-6xl mb-6">🏆</div>
-        <h2 class="text-3xl font-black text-slate-800 dark:text-white mb-2 leading-tight">Sessão Concluída!</h2>
-        <p class="text-slate-500 dark:text-slate-400 font-bold mb-8">Neuroplasticidade em ação. Ótimo trabalho!</p>
+        <div class="text-6xl mb-6">
+          {#if $sessionStats.cardsReviewed > 0 && ($sessionStats.correctCount / $sessionStats.cardsReviewed) > 0.8}
+            ✨
+          {:else if $sessionStats.cardsReviewed > 0}
+            💪
+          {:else}
+            🏁
+          {/if}
+        </div>
+        <h2 class="text-3xl font-black text-slate-800 dark:text-white mb-2 leading-tight">Missão Cumprida!</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-bold mb-8">
+          {#if $sessionStats.cardsReviewed > 0}
+            Você fortaleceu {$sessionStats.cardsReviewed} traços de memória hoje.
+          {:else}
+            Sessão encerrada com sucesso.
+          {/if}
+        </p>
 
         <div class="grid grid-cols-3 gap-4 mb-8">
           {#each [
-            { label: 'Cards', value: $sessionStats.cardsReviewed, color: 'text-primary-600' },
-            { label: 'Precisão', value: `${$sessionStats.cardsReviewed > 0 ? Math.round(($sessionStats.correctCount / $sessionStats.cardsReviewed) * 100) : 0}%`, color: 'text-emerald-500' },
-            { label: 'Tempo', value: `${Math.round(($sessionStats.totalTime || 0) / 60000)}m`, color: 'text-amber-500' }
+            { label: 'Cards', value: $sessionStats.cardsReviewed, color: 'text-primary-600', icon: '📇' },
+            { label: 'Precisão', value: `${$sessionStats.cardsReviewed > 0 ? Math.round(($sessionStats.correctCount / $sessionStats.cardsReviewed) * 100) : 0}%`, color: 'text-emerald-500', icon: '🎯' },
+            { label: 'Tempo', value: `${Math.round(($sessionStats.totalTime || 0) / 60000)}m`, color: 'text-amber-500', icon: '⏱️' }
           ] as stat}
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-slate-100 dark:border-slate-800">
-              <div class="text-2xl font-black {stat.color} leading-none mb-1">{stat.value}</div>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col items-center">
+              <span class="text-lg mb-1">{stat.icon}</span>
+              <div class="text-xl font-black {stat.color} leading-none mb-1">{stat.value}</div>
               <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</div>
             </div>
           {/each}
@@ -239,12 +314,12 @@
           <div class="mb-8 p-6 rounded-3xl text-left bg-gradient-to-br from-primary-600 to-indigo-700 text-white shadow-xl shadow-primary-500/20">
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-2">
-                <span class="text-[9px] font-black uppercase tracking-widest opacity-80">Próxima Sugestão</span>
+                <span class="text-[9px] font-black uppercase tracking-widest opacity-80">Próxima Parada</span>
                 <span class="bg-white/20 text-[8px] font-black px-2 py-0.5 rounded-full">
-                  {nextMission.mandatory ? 'RECOMENDADO' : 'OPCIONAL'}
+                  RECOMENDADO
                 </span>
               </div>
-              <span class="text-xl">🎯</span>
+              <span class="text-xl">🚀</span>
             </div>
             <h4 class="text-lg font-black leading-tight mb-2 truncate">{nextMission.topic?.name}</h4>
             <p class="text-[11px] font-bold opacity-80 leading-relaxed mb-6 italic line-clamp-2">"{nextMission.reason}"</p>
@@ -252,13 +327,13 @@
               on:click={continueWithNextMission} 
               class="w-full py-3.5 bg-white text-primary-600 rounded-2xl font-black text-sm shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              DECOLAR PARA PRÓXIMA 🚀
+              CONTINUAR AGORA
             </button>
           </div>
         {/if}
 
-        <button on:click={() => goto('/')} class="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-          Voltar para o Painel
+        <button on:click={() => goto('/')} class="px-8 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+          Sair para o Painel
         </button>
       </div>
     {:else if $sessionStore.isPaused}
@@ -296,9 +371,34 @@
         </div>
 
         <div class="flex-1 overflow-hidden">
-          <Card padding="lg" class="h-full overflow-y-auto">
-            <StudyCard card={$sessionStore.currentCard} showAnswer={$sessionStore.showingAnswer} />
-          </Card>
+          {#if feynmanMode && !$sessionStore.showingAnswer && !showFeynman}
+            <div class="h-full flex flex-col items-center justify-center">
+              <Card padding="lg" class="w-full max-w-2xl">
+                <div class="text-center mb-4">
+                  <span class="text-4xl">🧠</span>
+                  <h3 class="text-lg font-black text-slate-800 dark:text-white mt-2">Modo Feynman</h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    Tente explicar o conceito antes de ver a resposta
+                  </p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-4">
+                  <p class="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {$sessionStore.currentCard?.content?.front || $sessionStore.currentCard?.content?.question || 'Pergunta'}
+                  </p>
+                </div>
+                <button 
+                  on:click={triggerFeynman}
+                  class="w-full py-3 bg-primary-600 text-white rounded-xl font-black text-sm shadow-lg shadow-primary-500/20 hover:bg-primary-700 transition-all"
+                >
+                  Escrever minha explicação →
+                </button>
+              </Card>
+            </div>
+          {:else}
+            <Card padding="lg" class="h-full overflow-y-auto">
+              <StudyCard card={$sessionStore.currentCard} showAnswer={$sessionStore.showingAnswer} />
+            </Card>
+          {/if}
         </div>
       </div>
     {:else}
@@ -306,6 +406,27 @@
         <div class="w-12 h-12 border-4 border-slate-200 border-t-primary-500 rounded-full animate-spin"></div>
         <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Carregando Fluxo...</span>
       </div>
+    {/if}
+
+    <!-- Feynman Step Overlay -->
+    {#if showFeynman}
+      <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800">
+          <FeynmanStep 
+            concept={$sessionStore.currentCard?.content?.front || $sessionStore.currentCard?.content?.question || 'Conceito'}
+            onContinue={onFeynmanContinue}
+          />
+        </div>
+      </div>
+    {/if}
+
+    <!-- Pomodoro Break Overlay -->
+    {#if showBreakOverlay}
+      <PomodoroBreakOverlay 
+        isLong={isLongBreak}
+        onSkip={skipBreak}
+        onStartBreak={startBreak}
+      />
     {/if}
 
     <!-- Floating Notes Hub -->

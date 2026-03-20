@@ -121,7 +121,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Main Content -->
       <div class="lg:col-span-2 space-y-8">
-        {#if $subjectsStore.length > 0}
+        {#if $subjectsStore.length > 0 && totalDue > 0}
           <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <TutorMission />
           </div>
@@ -151,25 +151,63 @@
             <EditalWidget />
           </div>
         {:else}
-          <!-- Empty State -->
-          <div class="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 shadow-xl animate-scale-in">
-            <div class="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-6 dark:bg-primary-950/30">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
+          <!-- Empty State com Onboarding -->
+          <div class="flex flex-col items-center justify-center min-h-[60vh] text-center gap-8 px-4">
+            
+            <!-- Ícone motivacional -->
+            <div class="text-6xl">🚀</div>
+            
+            <!-- Título -->
+            <div>
+              <h1 class="text-3xl font-black text-slate-800 dark:text-white mb-2">
+                Bem-vindo ao StudyPro!
+              </h1>
+              <p class="text-slate-500 dark:text-slate-400 text-lg max-w-md font-bold">
+                Você está a 3 passos de ter um sistema de estudos inteligente funcionando.
+              </p>
             </div>
-            <h2 class="text-2xl font-black text-slate-800 dark:text-white mb-3">Comece sua Jornada</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-8 font-bold leading-relaxed">
-              Adicione suas matérias para que o Sistemão possa gerar seu plano de estudos inteligente.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="/subjects" class="px-8 py-3 bg-primary-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-primary-500/30 transition-all hover:bg-primary-700 active:scale-95">
-                Adicionar Matéria
+
+            <!-- Checklist de passos -->
+            <div class="flex flex-col gap-3 w-full max-w-sm text-left">
+              
+              <a href="/subjects" class="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-primary-400 hover:border-primary hover:bg-primary-5 transition-all group dark:border-primary-600 dark:hover:border-primary-400">
+                <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300 flex items-center justify-center font-black text-sm group-hover:bg-primary-600 group-hover:text-white transition-all">
+                  1
+                </div>
+                <div>
+                  <div class="font-semibold text-sm text-slate-700 dark:text-slate-200">Cadastrar Matérias do Edital</div>
+                  <div class="text-xs text-slate-400">Defina as matérias e seus pesos</div>
+                </div>
+                <span class="ml-auto text-slate-400 group-hover:text-primary-600">→</span>
               </a>
-              <button on:click={seedDemo} class="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl font-black text-sm transition-all hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95">
+
+              <div class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 opacity-60">
+                <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-sm text-slate-400">2</div>
+                <div>
+                  <div class="font-semibold text-sm text-slate-500">Criar Flashcards</div>
+                  <div class="text-xs text-slate-400">Adicione perguntas e respostas</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 opacity-60">
+                <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-sm text-slate-400">3</div>
+                <div>
+                  <div class="font-semibold text-sm text-slate-500">Iniciar a Missão</div>
+                  <div class="text-xs text-slate-400">O sistema cuida do resto</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CTA Principal -->
+            <div class="flex flex-col sm:flex-row gap-3">
+              <a href="/subjects" class="px-8 py-4 bg-primary-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-primary-500/30 hover:bg-primary-700 hover:scale-105 transition-all">
+                Começar Agora → Configurar Matérias
+              </a>
+              <button on:click={seedDemo} class="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl font-black text-lg transition-all hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95">
                 Ver Demonstração
               </button>
             </div>
+
           </div>
         {/if}
       </div>

@@ -64,3 +64,33 @@
 2. Configurações de gamificação nas settings
 
 **Motivação**: Todas as funcionalidades documentadas nos GUIDES estão implementadas, mesmo que algumas não tenham UI dedicada.
+
+---
+
+## 2026-03-20 18:30 - Estabilização e Refino de UX/UI
+
+### Decisão: Limpeza de Interface e Onboarding Ativo
+
+**Problema**: O sistema apresentava rótulos duplicados na sidebar em produção e o onboarding do dashboard não era exibido para novos usuários devido ao pré-carregamento do edital (syllabus seed). Além disso, a criação de cards falhava por falta de cast de IDs e reatividade no carregamento de matérias.
+
+**Análise realizada**:
+- **Sidebar**: Identificada redundância visual (`Label / Label`) e ausência de ícones.
+- **Onboarding**: O estado vazio do Dashboard dependia apenas de `subjects.length > 0`, mas o sistema já nasce com 10 matérias.
+- **Formulários**: O seletor de tópicos perdia a referência por IDs numéricos vs strings e falta de espera pelo carregamento da store.
+
+**Decisões**:
+1. **Unificação da Sidebar**: Removidos spans redundantes e implementado sistema de ícones via emojis para máxima compatibilidade sem carga extra de fontes.
+2. **Onboarding por Flashcards**: O estado de boas-vindas agora é acionado se `totalDue === 0`, garantindo que o usuário seja guiado à criação de cards mesmo com matérias já cadastradas.
+3. **Estabilidade de Dados**: Implementado casting explícito de `String(id)` nos dropdowns e adição de estados de `loading/disabled` nos seletores para evitar submissões de formulários incompletos.
+4. **Proteção de Dados**: Ações destrutivas na página de ajustes foram movidas para uma "Zona de Perigo" visualmente isolada com modais de confirmação em duas etapas.
+
+**Motivação**: Melhorar a "primeira impressão" do usuário e eliminar os bloqueadores técnicos que impediam o fluxo principal de estudo em produção.
+
+**Status de Evolução**:
+| Funcionalidade | Status | Observação |
+|---|---|---|
+| Sidebar/Navegação | ✅ Estável | Limpa, com ícones e link do Edital acessível. |
+| Dashboard | ✅ Refinado | Onboarding ativo para novos usuários. |
+| Criação de Cards | ✅ Corrigido | Fluxo de seleção de matéria/tópico 100% funcional. |
+| Zona de Perigo | ✅ Seguro | Modais de confirmação em funcionamento. |
+

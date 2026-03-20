@@ -11,7 +11,6 @@
 
   let loading = true;
   let card = null;
-  let subjects = [];
   let topics = [];
   let enableDraftSave = false;
   let draftKey = '';
@@ -43,7 +42,7 @@
     const id = Number($page.params.id);
     draftKey = `study.cards.edit.${id}.v1`;
 
-    subjects = await subjectsStore.load();
+    await subjectsStore.load();
     card = await cardsStore.getById(id);
 
     if (!card) {
@@ -175,7 +174,7 @@
           }}
         >
           <option value="">Materia</option>
-          {#each subjects as subject}
+          {#each $subjectsStore as subject}
             <option value={subject.id}>{subject.name}</option>
           {/each}
         </select>

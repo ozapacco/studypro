@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { configStore, toast } from '$lib/stores';
-  import { cleanupOldData, exportDatabase, importDatabase, initializeDatabase } from '$lib/db.js';
+  import { cleanupOldData, db, exportDatabase, importDatabase, initializeDatabase } from '$lib/db.js';
   import { getCloudStatus, restoreFromCloudIfNeeded, scheduleCloudSync, setCloudSyncSuspended, syncNow } from '$lib/cloud/sync.js';
   import { importStudeiBackupPayload, isStudeiBackupPayload } from '$lib/importers/studeiBackup.js';
   import { clearDraft, loadDraft, saveDraft } from '$lib/utils/draft.js';
@@ -18,6 +18,8 @@
   let restoringCloud = false;
   let enableDraftSave = false;
   let cloudStatus = getCloudStatus();
+  let showClearConfirm = false;
+  let clearing = false;
 
   let form = {
     userName: '',
@@ -30,7 +32,9 @@
     requestRetention: 0.85,
     maxInterval: 365,
     theme: 'system',
-    tutorMode: 'active'
+    tutorMode: 'active',
+    pomodoroEnabled: true,
+    feynmanEnabled: false
   };
 
   $: if (enableDraftSave) {
@@ -64,7 +68,9 @@
       requestRetention: cfg.fsrsParams?.requestRetention || 0.85,
       maxInterval: cfg.fsrsParams?.maximumInterval || 365,
       theme: cfg.preferences?.theme || 'system',
-      tutorMode: cfg.tutor?.mode || 'active'
+      tutorMode: cfg.tutor?.mode || 'active',
+      pomodoroEnabled: cfg.preferences?.pomodoroEnabled ?? true,
+      feynmanEnabled: cfg.preferences?.feynmanEnabled ?? false
     };
   }
 
@@ -85,7 +91,9 @@
         ...$configStore.preferences,
         newCardsPerDay: Number(form.newCardsPerDay || 20),
         maxReviewsPerDay: Number(form.maxReviewsPerDay || 200),
-        theme: form.theme
+        theme: form.theme,
+        pomodoroEnabled: form.pomodoroEnabled,
+        feynmanEnabled: form.feynmanEnabled
       }
     });
 
@@ -180,6 +188,23 @@
   async function handleCleanup() {
     await cleanupOldData(365);
     toast('Logs antigos limpos.', 'info');
+  }
+
+  async function handleClearAll() {
+    clearing = true;
+    try {
+      await db.delete();
+      await db.open();
+      await initializeDatabase();
+      await configStore.load();
+      showClearConfirm = false;
+      toast('Todos os dados foram apagados.', 'success');
+      window.location.href = '/';
+    } catch (e) {
+      toast('Erro ao limpar dados.', 'error');
+    } finally {
+      clearing = false;
+    }
   }
 </script>
 
@@ -309,6 +334,36 @@
         </InteractiveCard>
       </section>
 
+      <!-- Study Techniques -->
+      <section class="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350">
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4">Técnicas de Estudo</h3>
+        <InteractiveCard padding="lg">
+          <div class="space-y-4">
+            <label class="flex items-center justify-between p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary-500/50 transition-all cursor-pointer">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">🍅</span>
+                <div class="flex flex-col">
+                  <span class="text-sm font-black text-slate-800 dark:text-white">Pomodoro</span>
+                  <span class="text-[10px] font-bold text-slate-400">Sugere pausas a cada 25 minutos</span>
+                </div>
+              </div>
+              <input type="checkbox" bind:checked={form.pomodoroEnabled} class="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
+            </label>
+            
+            <label class="flex items-center justify-between p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary-500/50 transition-all cursor-pointer">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">🧠</span>
+                <div class="flex flex-col">
+                  <span class="text-sm font-black text-slate-800 dark:text-white">Modo Feynman</span>
+                  <span class="text-[10px] font-bold text-slate-400">Exija explicação antes de ver a resposta</span>
+                </div>
+              </div>
+              <input type="checkbox" bind:checked={form.feynmanEnabled} class="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
+            </label>
+          </div>
+        </InteractiveCard>
+      </section>
+
       <!-- Cloud Sync -->
       <section class="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400">
         <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4">Sincronização na Nuvem</h3>
@@ -353,9 +408,9 @@
         </InteractiveCard>
       </section>
 
-      <!-- Appearance -->
+      <!-- Appearance & Backup -->
       <section class="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
-        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4">Aparência e Manutenção</h3>
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4">Aparência e Backup</h3>
         <InteractiveCard padding="lg">
            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
              <div class="space-y-4">
@@ -367,24 +422,57 @@
                     <option value="dark">Escuro (Night Mode)</option>
                   </select>
                 </div>
-                <button class="text-rose-500 text-[10px] font-black uppercase tracking-widest hover:underline" on:click={handleCleanup}>
-                   LIMPAR LOGS ANTIGOS (> 1 ANO)
-                </button>
              </div>
              
              <div class="flex flex-col gap-3">
                 <button 
                   on:click={downloadBackup}
-                  class="w-full py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-widest shadow-lg transition-all hover:translate-y-[-2px]"
+                  class="w-full py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  Exportar Backup JSON
+                  📥 Exportar Backup JSON
                 </button>
-                <label for="fileImport" class="w-full py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-900 text-center cursor-pointer">
+                <label for="fileImport" class="w-full py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-800 text-center cursor-pointer">
                   <input id="fileImport" type="file" accept="application/json" class="hidden" on:change={handleImport} disabled={importing} />
-                  {importing ? 'Processando...' : 'Importar Backup'}
+                  {importing ? 'Processando...' : '📂 Importar Backup'}
                 </label>
-             </div>
-           </div>
+              </div>
+            </div>
+        </InteractiveCard>
+      </section>
+
+      <!-- Danger Zone -->
+      <section class="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-600">
+        <h3 class="text-[10px] font-black text-rose-500 uppercase tracking-widest px-1 mb-4">⚠️ Zona de Perigo</h3>
+        <InteractiveCard padding="lg">
+          <div class="space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800">
+              <div>
+                <h4 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight">Manutenção de Dados</h4>
+                <p class="text-[10px] font-bold text-slate-400 mt-1">Remove logs de revisão com mais de 365 dias.</p>
+              </div>
+              <button 
+                on:click={handleCleanup}
+                class="px-4 py-2 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors border border-rose-200 dark:border-rose-900"
+              >
+                Limpar Histórico Antigo
+              </button>
+            </div>
+
+            <div class="border-2 border-rose-200 dark:border-rose-900 rounded-2xl p-6 bg-rose-50/50 dark:bg-rose-950/20">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h4 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight text-red-600">Apagar Tudo</h4>
+                  <p class="text-[10px] font-bold text-slate-400 mt-1">Elimina permanentemente matérias, cards e progresso.</p>
+                </div>
+                <button 
+                  on:click={() => showClearConfirm = true}
+                  class="px-6 py-3 rounded-2xl bg-red-500 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-red-500/20 transition-all hover:bg-red-600 hover:scale-105 active:scale-95"
+                >
+                  DELETAR CONTA LOCAL
+                </button>
+              </div>
+            </div>
+          </div>
         </InteractiveCard>
       </section>
 
@@ -408,3 +496,31 @@
   @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 </style>
+
+{#if showClearConfirm}
+  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+      <div class="text-4xl text-center mb-4">⚠️</div>
+      <h2 class="text-xl font-black text-center mb-2 text-red-600 dark:text-red-400">Ação Irreversível</h2>
+      <p class="text-slate-600 dark:text-slate-300 text-sm text-center mb-6">
+        Você apagará TODOS os dados: matérias, cards e histórico.
+        <strong class="text-red-500">Isso não pode ser desfeito.</strong>
+      </p>
+      <div class="flex gap-3">
+        <button 
+          on:click={() => showClearConfirm = false}
+          class="flex-1 border-2 border-slate-200 dark:border-slate-700 rounded-lg py-3 text-slate-700 dark:text-slate-200 font-bold transition-all hover:bg-slate-50 dark:hover:bg-slate-700"
+        >
+          Cancelar
+        </button>
+        <button 
+          on:click={handleClearAll}
+          disabled={clearing}
+          class="flex-1 bg-red-500 text-white rounded-lg py-3 font-black transition-all hover:bg-red-600 disabled:opacity-50"
+        >
+          {clearing ? 'Apagando...' : 'Sim, apagar tudo'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

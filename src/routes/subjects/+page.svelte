@@ -83,7 +83,8 @@
   function startEdit(subject) {
     editingId = subject.id;
     editingName = subject.name;
-    editingWeight = Number(subject.weight) || 10;
+    const w = Number(subject.weight);
+    editingWeight = (isNaN(w) || w < 0 || w > 100) ? 10 : w;
   }
 
   async function saveEdit(id) {

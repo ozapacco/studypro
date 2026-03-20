@@ -10,12 +10,13 @@
   let transitioning = false;
 
   const navItems = [
-    { href: '/', icon: '🏠', label: 'Painel' },
-    { href: '/study', icon: '📚', label: 'Estudo' },
-    { href: '/cards', icon: '🗂️', label: 'Cartões' },
-    { href: '/subjects', icon: '📖', label: 'Matérias' },
-    { href: '/stats', icon: '📊', label: 'Estatísticas' },
-    { href: '/settings', icon: '⚙️', label: 'Ajustes' }
+    { href: '/', label: 'Início', icon: '🏠' },
+    { href: '/study', label: 'Estudo', icon: '📖' },
+    { href: '/cards', label: 'Cartões', icon: '📇' },
+    { href: '/subjects', label: 'Matérias', icon: '📚' },
+    { href: '/stats', label: 'Estatísticas', icon: '📊' },
+    { href: '/edital', label: 'Edital', icon: '🎯' },
+    { href: '/settings', label: 'Ajustes', icon: '⚙️' }
   ];
 
   onMount(async () => {
@@ -41,24 +42,24 @@
 <div class="min-h-screen flex">
   <aside class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 hidden md:flex flex-col">
     <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
-      <span class="text-xl font-bold text-primary-600">StudyPro</span>
+      <span class="text-xl font-bold font-display text-primary-600 tracking-tight italic">StudyPro <span class="text-xs font-black uppercase not-italic opacity-40 ml-1">v2</span></span>
     </div>
 
     <nav class="flex-1 p-4 space-y-1">
       {#each navItems as item}
         <a
           href={item.href}
-          class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-primary-600 dark:hover:text-primary-400 transition-all duration-200 group"
         >
-          <span class="text-base leading-none" aria-hidden="true">{item.icon}</span>
-          <span class="font-medium">{item.label}</span>
+          <span class="text-xl grayscale group-hover:grayscale-0 transition-all">{item.icon}</span>
+          <span class="font-bold text-sm tracking-tight">{item.label}</span>
         </a>
       {/each}
     </nav>
 
     <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-      <button class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" on:click={() => uiStore.toggleDarkMode()}>
-        <span>Alternar tema</span>
+      <button class="w-full flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary-500 transition-colors" on:click={() => uiStore.toggleDarkMode()}>
+        <span>🌗 Tema</span>
       </button>
     </div>
   </aside>
