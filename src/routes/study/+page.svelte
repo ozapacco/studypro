@@ -48,85 +48,92 @@
   let isLongBreak = false;
   let pomodoroTimerCheck = false;
 
+  let loadingError = null;
+
   onMount(async () => {
-    await initializeDatabase();
-    await configStore.load();
-
-    const subjectsCount = await db.subjects.count();
-    const topicsCount = await db.topics.count();
-    const cardsCount = await db.cards.count();
-
-    if (subjectsCount === 0) {
-      blocked = true;
-      blockedReason = 'Cadastre matérias do edital para começar a estudar.';
-    } else if (topicsCount === 0) {
-      blocked = true;
-      blockedReason = 'Crie tópicos em uma matéria para desbloquear o estudo.';
-    } else if (cardsCount === 0) {
-      blocked = true;
-      blockedReason = 'Crie pelo menos 1 card para iniciar a sessão.';
-    }
-
-    if (blocked) return;
-
-    const topicId = $page.url.searchParams.get('topicId');
-
-    if (topicId) {
-      const topicIdNum = parseInt(topicId);
-      const [topic, cards, mastery] = await Promise.all([
-        db.topics.get(topicIdNum),
-        db.cards.where('topicId').equals(topicIdNum).toArray(),
-        tutorEngine.calculateSubjectMastery(await db.subjects.toArray()),
-      ]);
-
-      if (topic) {
-        const subject = await db.subjects.get(topic.subjectId);
-        const subjectMastery = mastery.find(s => s.id === topic.subjectId);
-
-        const now = new Date();
-        const dueCards = cards.filter(c => c.state !== 'new' && c.due && new Date(c.due) <= now);
-        const hasUrgent = cards.some(c => (c.state === 'learning' || c.state === 'relearning'));
-
-        const actionType = hasUrgent ? 'urgent' : dueCards.length > 0 ? 'review' : 'new';
-        const retention = subjectMastery?.retention || 0;
-        const masteryLabel = subjectMastery ? tutorEngine.getMasteryLabel(retention) : 'desconhecido';
-
-        // PED-F4: Block checks
-        const pedagogicalBlock = await tutorEngine.checkPedagogicalBlock(topicIdNum);
-        if (pedagogicalBlock.blocked) {
-          toast(pedagogicalBlock.reason, 'warning');
-          if (configStore.tutor?.mode === 'strict') {
-            toast('Desative o modo Estrito em Ajustes ou finalize a matéria atual.', 'info');
-            goto('/');
-            return;
-          }
-        }
-
-        preVooTopic = {
-          topicId: topicIdNum,
-          topicName: topic.name,
-          subjectId: topic.subjectId,
-          subjectName: subject?.name || 'Matéria',
-          subjectColor: subject?.color || COLORS.primary[500],
-          actionType,
-          retention,
-          masteryLevel: masteryLabel,
-          domainScore: subjectMastery?.domainScore || 0,
-          accuracy: subjectMastery?.accuracy || 0,
-          coverage: subjectMastery?.coverage || 0,
-        };
-        showPreVoo = true;
-        return;
-      }
-    }
-
-    await loadSession();
-    setupKeyboard();
-
     try {
-      currentMission = await tutorEngine.decideNextMission();
+      await initializeDatabase();
+      await configStore.load();
+
+      const subjectsCount = await db.subjects.count();
+      const topicsCount = await db.topics.count();
+      const cardsCount = await db.cards.count();
+
+      if (subjectsCount === 0) {
+        blocked = true;
+        blockedReason = 'Cadastre matérias do edital para começar a estudar.';
+      } else if (topicsCount === 0) {
+        blocked = true;
+        blockedReason = 'Crie tópicos em uma matéria para desbloquear o estudo.';
+      } else if (cardsCount === 0) {
+        blocked = true;
+        blockedReason = 'Crie pelo menos 1 card para iniciar a sessão.';
+      }
+
+      if (blocked) return;
+
+      const topicId = $page.url.searchParams.get('topicId');
+
+      if (topicId) {
+        const topicIdNum = parseInt(topicId);
+        const [topic, cards, mastery] = await Promise.all([
+          db.topics.get(topicIdNum),
+          db.cards.where('topicId').equals(topicIdNum).toArray(),
+          tutorEngine.calculateSubjectMastery(await db.subjects.toArray()),
+        ]);
+
+        if (topic) {
+          const subject = await db.subjects.get(topic.subjectId);
+          const subjectMastery = mastery.find(s => s.id === topic.subjectId);
+
+          const now = new Date();
+          const dueCards = cards.filter(c => c.state !== 'new' && c.due && new Date(c.due) <= now);
+          const hasUrgent = cards.some(c => (c.state === 'learning' || c.state === 'relearning'));
+
+          const actionType = hasUrgent ? 'urgent' : dueCards.length > 0 ? 'review' : 'new';
+          const retention = subjectMastery?.retention || 0;
+          const masteryLabel = subjectMastery ? tutorEngine.getMasteryLabel(retention) : 'desconhecido';
+
+          const pedagogicalBlock = await tutorEngine.checkPedagogicalBlock(topicIdNum);
+          if (pedagogicalBlock.blocked) {
+            toast(pedagogicalBlock.reason, 'warning');
+            if (configStore.tutor?.mode === 'strict') {
+              toast('Desative o modo Estrito em Ajustes ou finalize a matéria atual.', 'info');
+              goto('/');
+              return;
+            }
+          }
+
+          preVooTopic = {
+            topicId: topicIdNum,
+            topicName: topic.name,
+            subjectId: topic.subjectId,
+            subjectName: subject?.name || 'Matéria',
+            subjectColor: subject?.color || COLORS.primary[500],
+            actionType,
+            retention,
+            masteryLevel: masteryLabel,
+            domainScore: subjectMastery?.domainScore || 0,
+            accuracy: subjectMastery?.accuracy || 0,
+            coverage: subjectMastery?.coverage || 0,
+          };
+          showPreVoo = true;
+          return;
+        }
+      }
+
+      await loadSession();
+      setupKeyboard();
+
+      try {
+        currentMission = await tutorEngine.decideNextMission();
+      } catch (e) {
+        console.error('Tutor error:', e);
+      }
     } catch (e) {
-      console.error('Tutor error:', e);
+      console.error('Study page load error:', e);
+      loadingError = e.message || 'Erro ao carregar sessão de estudo';
+      toast('Erro ao carregar sessão de estudo: ' + (e.message || 'Erro desconhecido'), 'error');
     }
   });
 
@@ -148,18 +155,31 @@
         }
       }
 
-      if (session) {
-        await sessionStore.start(session);
-      } else {
-        const newSession = await sessionGenerator.generateDailySession({ forceTopicId: topicId });
-        await sessionStore.start(newSession);
+      if (!session) {
+        session = await sessionGenerator.generateDailySession({ forceTopicId: topicId });
       }
+
+      const hasCards = session?.plan?.blocks?.some(b => b.cards?.length > 0 || b.newCards?.length > 0);
+      const isRestDay = session?.status === 'rest_day';
+
+      if (isRestDay || !hasCards) {
+        blocked = true;
+        blockedReason = !hasCards 
+          ? 'Nenhum card disponível para estudo hoje. Que tal revisar seus flashcards?' 
+          : 'Dia de descanso. Volte amanhã para continuar seus estudos!';
+        return;
+      }
+
+      await sessionStore.start(session);
     }
   }
 
   async function handlePreVooStart() {
     showPreVoo = false;
     await loadSession(preVooTopic?.topicId);
+    
+    if (blocked) return;
+    
     setupKeyboard();
     pomodoroMode = $configStore.preferences?.pomodoroEnabled ?? true;
     feynmanMode = $configStore.preferences?.feynmanEnabled ?? false;
@@ -227,11 +247,12 @@
   <title>Estudo | Sistemão</title>
 </svelte:head>
 
-{#if showPreVoo && preVooTopic}
+{#if showPreVoo && preVooTopic && !loadingError && !blocked}
   <PreVoo topic={preVooTopic} on:start={handlePreVooStart} />
 {/if}
 
 <div class="h-screen flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
+  {#if !loadingError && !blocked}
   <!-- Top Bar -->
   <header class="flex-shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm z-30">
     {#if currentMission && !showSessionSummary && !showPreVoo}
@@ -294,9 +315,24 @@
 
     <SessionProgress />
   </header>
+  {/if}
 
   <main class="flex-1 overflow-hidden relative flex flex-col items-center justify-center p-4">
-    {#if blocked}
+    {#if loadingError}
+      <div class="max-w-2xl mx-auto px-4 py-10">
+        <EmptyState
+          icon="⚠️"
+          title="Erro ao carregar sessão"
+          description={loadingError}
+          size="lg"
+        >
+          <div slot="action" class="flex flex-col sm:flex-row gap-3 mt-4">
+            <button class="btn-action" on:click={() => location.reload()}>Recarregar página</button>
+            <a class="btn-action" href="/">Voltar ao início</a>
+          </div>
+        </EmptyState>
+      </div>
+    {:else if blocked}
       <div class="max-w-2xl mx-auto px-4 py-10">
         <EmptyState
           icon="📚"
