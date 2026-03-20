@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { db, initializeDatabase } from '$lib/db.js';
-  import { cardsStore, subjectsStore, toast } from '$lib/stores';
+  import { cardsStore, subjectsStore, toast, uiStore } from '$lib/stores';
   import Card from '$lib/components/common/Card.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import TopicMindMapEditor from '$lib/components/mindmaps/TopicMindMapEditor.svelte';
@@ -58,7 +58,12 @@
   }
 
   async function removeTopic(topic) {
-    if (!confirm(`Remover tópico "${topic.name}" com aulas e cards vinculados?`)) return;
+    const confirmed = await uiStore.confirm(
+      `Isso removerá o tópico "${topic.name}" e todas as aulas e cards vinculados a ele.`,
+      { title: 'Remover Tópico?', variant: 'danger', confirmLabel: 'Sim, Remover' }
+    );
+    if (!confirmed) return;
+    
     await db.lessons.where('topicId').equals(topic.id).delete();
     await db.cards.where('topicId').equals(topic.id).delete();
     await db.topics.delete(topic.id);

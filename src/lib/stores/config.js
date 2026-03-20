@@ -1,5 +1,7 @@
 import { writable, derived } from "svelte/store";
 import { db } from "../db.js";
+import { ConfigSchema } from "../utils/validation.js";
+import { toast } from "./ui.js";
 
 function createConfigStore() {
   const { subscribe, set, update } = writable(null);
@@ -70,29 +72,49 @@ function createConfigStore() {
     },
 
     async save(changes) {
-      let payload;
-      update((config) => {
-        payload = {
-          ...config,
-          ...changes,
-          updatedAt: new Date().toISOString(),
-        };
-        return payload;
-      });
-      await db.config.put(payload);
+      try {
+        const validated = ConfigSchema.partial().parse(changes);
+        let payload;
+        update((config) => {
+          payload = {
+            ...config,
+            ...validated,
+            updatedAt: new Date().toISOString(),
+          };
+          return payload;
+        });
+        await db.config.put(payload);
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Falha ao salvar configurações.', 'error');
+        }
+        throw e;
+      }
     },
 
     async updateFSRS(params) {
-      let payload;
-      update((config) => {
-        payload = {
-          ...config,
-          fsrsParams: { ...config.fsrsParams, ...params },
-          updatedAt: new Date().toISOString(),
-        };
-        return payload;
-      });
-      await db.config.put(payload);
+      try {
+        const validated = ConfigSchema.shape.fsrsParams.partial().parse(params);
+        let payload;
+        update((config) => {
+          payload = {
+            ...config,
+            fsrsParams: { ...config.fsrsParams, ...validated },
+            updatedAt: new Date().toISOString(),
+          };
+          return payload;
+        });
+        await db.config.put(payload);
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Falha ao atualizar parâmetros FSRS.', 'error');
+        }
+        throw e;
+      }
     },
 
     async incrementStreak() {
@@ -153,19 +175,29 @@ function createConfigStore() {
     },
 
     async setTutorMode(mode) {
-      let payload;
-      update((config) => {
-        payload = {
-          ...config,
-          tutor: {
-            ...config.tutor,
-            mode,
-          },
-          updatedAt: new Date().toISOString(),
-        };
-        return payload;
-      });
-      await db.config.put(payload);
+      try {
+        const validatedMode = ConfigSchema.shape.tutor.shape.mode.parse(mode);
+        let payload;
+        update((config) => {
+          payload = {
+            ...config,
+            tutor: {
+              ...config.tutor,
+              mode: validatedMode,
+            },
+            updatedAt: new Date().toISOString(),
+          };
+          return payload;
+        });
+        await db.config.put(payload);
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Modo de tutor inválido.', 'error');
+        }
+        throw e;
+      }
     },
   };
 }

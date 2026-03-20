@@ -36,7 +36,7 @@ async function collectSnapshot() {
   };
 }
 
-export function getCloudStatus() {
+export async function getCloudStatus() {
   let lastSyncAt = null;
   try {
     const stored = localStorage.getItem(LAST_SYNC_KEY);
@@ -48,13 +48,17 @@ export function getCloudStatus() {
     /* ignore */
   }
 
+  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+
   return {
     enabled: cloudConfig.enabled,
     configured: cloudConfig.enabled,
-    ownerId: cloudConfig.ownerId,
+    ownerId: user?.id || null,
+    userEmail: user?.email || null,
     online: typeof navigator === "undefined" ? true : navigator.onLine,
     syncing,
     lastSyncAt,
+    authenticated: !!user
   };
 }
 
@@ -63,17 +67,20 @@ export function setCloudSyncSuspended(value) {
 }
 
 export async function syncNow(reason = "manual") {
-  if (!cloudConfig.enabled || !supabase || suspendSync)
+  if (!supabase || suspendSync)
     return { synced: false, reason: "disabled" };
   if (typeof navigator !== "undefined" && !navigator.onLine)
     return { synced: false, reason: "offline" };
   if (syncing) return { synced: false, reason: "in_progress" };
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { synced: false, reason: "not_authenticated" };
+
   syncing = true;
   try {
     const snapshot = await collectSnapshot();
     const payload = {
-      owner_id: cloudConfig.ownerId,
+      owner_id: user.id,
       app: APP_KEY,
       payload: snapshot,
       reason,
@@ -100,7 +107,7 @@ export async function syncNow(reason = "manual") {
 }
 
 export function scheduleCloudSync(reason = "change", delayMs = 1800) {
-  if (!cloudConfig.enabled || suspendSync) return;
+  if (!supabase || suspendSync) return;
 
   if (syncTimer) {
     clearTimeout(syncTimer);
@@ -123,8 +130,11 @@ async function hasLocalData() {
 }
 
 export async function restoreFromCloudIfNeeded({ force = false } = {}) {
-  if (!cloudConfig.enabled || !supabase)
+  if (!supabase)
     return { restored: false, reason: "disabled" };
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { restored: false, reason: "not_authenticated" };
 
   const shouldSkip = !force && (await hasLocalData());
   if (shouldSkip) return { restored: false, reason: "local_data_exists" };
@@ -132,7 +142,7 @@ export async function restoreFromCloudIfNeeded({ force = false } = {}) {
   const { data, error } = await supabase
     .from(SNAPSHOT_TABLE)
     .select("payload,updated_at")
-    .eq("owner_id", cloudConfig.ownerId)
+    .eq("owner_id", user.id)
     .eq("app", APP_KEY)
     .maybeSingle();
 

@@ -1,5 +1,7 @@
-﻿import { writable } from "svelte/store";
+import { writable } from "svelte/store";
 import { db } from "../db.js";
+import { SubjectSchema } from "../utils/validation.js";
+import { toast } from "./ui.js";
 
 function createSubjectsStore() {
   const { subscribe, set } = writable([]);
@@ -18,24 +20,34 @@ function createSubjectsStore() {
     },
 
     async add(subject) {
-      const order = (await db.subjects.count()) + 1;
-      const id = await db.subjects.add({
-        ...subject,
-        order,
-        proficiencyLevel: subject.proficiencyLevel || 0,
-        stats: {
-          totalCards: 0,
-          matureCards: 0,
-          learningCards: 0,
-          newCards: 0,
-          averageEase: 5,
-          retention: 0,
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      await this.load();
-      return id;
+      try {
+        const validated = SubjectSchema.parse(subject);
+        const order = (await db.subjects.count()) + 1;
+        const id = await db.subjects.add({
+          ...validated,
+          order,
+          proficiencyLevel: validated.proficiencyLevel || 0,
+          stats: {
+            totalCards: 0,
+            matureCards: 0,
+            learningCards: 0,
+            newCards: 0,
+            averageEase: 5,
+            retention: 0,
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        await this.load();
+        return id;
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Falha ao adicionar matéria.', 'error');
+        }
+        throw e;
+      }
     },
 
     async getById(id) {
@@ -43,11 +55,21 @@ function createSubjectsStore() {
     },
 
     async update(id, changes) {
-      await db.subjects.update(id, {
-        ...changes,
-        updatedAt: new Date().toISOString(),
-      });
-      await this.load();
+      try {
+        const validated = SubjectSchema.partial().parse(changes);
+        await db.subjects.update(id, {
+          ...validated,
+          updatedAt: new Date().toISOString(),
+        });
+        await this.load();
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Falha ao atualizar matéria.', 'error');
+        }
+        throw e;
+      }
     },
 
     async remove(id) {

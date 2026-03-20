@@ -1,4 +1,4 @@
-﻿import { writable } from 'svelte/store';
+import { writable } from 'svelte/store';
 
 function createUIStore() {
   const { subscribe, update } = writable({
@@ -11,11 +11,49 @@ function createUIStore() {
     loadingMessage: '',
     darkMode: false,
     isMobile: false,
-    keyboardShortcutsEnabled: true
+    keyboardShortcutsEnabled: true,
+    confirm: {
+      open: false,
+      title: 'Confirmar',
+      message: 'Tem certeza?',
+      resolve: null,
+      variant: 'danger',
+      confirmLabel: 'Confirmar',
+      cancelLabel: 'Cancelar'
+    }
   });
 
   return {
     subscribe,
+
+    confirm(message, options = {}) {
+      return new Promise((resolve) => {
+        update((state) => ({
+          ...state,
+          confirm: {
+            open: true,
+            title: options.title || 'Confirmar',
+            message: message,
+            resolve: resolve,
+            variant: options.variant || 'danger',
+            confirmLabel: options.confirmLabel || 'Confirmar',
+            cancelLabel: options.cancelLabel || 'Cancelar'
+          }
+        }));
+      });
+    },
+
+    resolveConfirm(value) {
+      update((state) => {
+        if (state.confirm.resolve) {
+          state.confirm.resolve(value);
+        }
+        return {
+          ...state,
+          confirm: { ...state.confirm, open: false, resolve: null }
+        };
+      });
+    },
 
     toggleSidebar() {
       update((state) => ({ ...state, sidebarOpen: !state.sidebarOpen }));

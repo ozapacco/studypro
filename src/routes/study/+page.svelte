@@ -16,8 +16,13 @@
   import PomodoroBreakOverlay from '$lib/components/study/PomodoroBreakOverlay.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Card from '$lib/components/common/Card.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
 
   let keyboardHandler;
+
+  // Block state
+  let blocked = false;
+  let blockedReason = '';
 
   // Pre-Voo state
   let showPreVoo = false;
@@ -47,6 +52,23 @@
     await initializeDatabase();
     await configStore.load();
 
+    const subjectsCount = await db.subjects.count();
+    const topicsCount = await db.topics.count();
+    const cardsCount = await db.cards.count();
+
+    if (subjectsCount === 0) {
+      blocked = true;
+      blockedReason = 'Cadastre matérias do edital para começar a estudar.';
+    } else if (topicsCount === 0) {
+      blocked = true;
+      blockedReason = 'Crie tópicos em uma matéria para desbloquear o estudo.';
+    } else if (cardsCount === 0) {
+      blocked = true;
+      blockedReason = 'Crie pelo menos 1 card para iniciar a sessão.';
+    }
+
+    if (blocked) return;
+
     const topicId = $page.url.searchParams.get('topicId');
 
     if (topicId) {
@@ -74,6 +96,7 @@
         if (pedagogicalBlock.blocked) {
           toast(pedagogicalBlock.reason, 'warning');
           if (configStore.tutor?.mode === 'strict') {
+            toast('Desative o modo Estrito em Ajustes ou finalize a matéria atual.', 'info');
             goto('/');
             return;
           }
@@ -273,7 +296,21 @@
   </header>
 
   <main class="flex-1 overflow-hidden relative flex flex-col items-center justify-center p-4">
-    {#if $sessionStore.isComplete || showSessionSummary}
+    {#if blocked}
+      <div class="max-w-2xl mx-auto px-4 py-10">
+        <EmptyState
+          icon="📚"
+          title="Antes de começar o estudo"
+          description={blockedReason}
+          size="lg"
+        >
+          <div slot="action" class="flex flex-col sm:flex-row gap-3 mt-4">
+            <a class="btn-action" href="/subjects">Cadastrar matérias</a>
+            <a class="btn-action" href="/cards">Criar cards</a>
+          </div>
+        </EmptyState>
+      </div>
+    {:else if $sessionStore.isComplete || showSessionSummary}
       <div 
         class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-scale-in"
         in:fly={{ y: 40, duration: 600 }}

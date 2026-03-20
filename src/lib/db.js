@@ -21,6 +21,8 @@ import { seedSyllabus } from "./data/syllabus.js";
 /** @type {Dexie & StudyDatabase} */
 export const db = /** @type {any} */ (new Dexie("StudySystemDB"));
 
+let initPromise = null;
+
 db.version(2).stores({
   config: "++id",
   subjects: "++id, name, weight, &order",
@@ -84,77 +86,88 @@ db.cards.hook("updating", (changes) => {
 });
 
 export async function initializeDatabase() {
-  const config = await db.config.get(1);
-  if (!config) {
-    await db.config.add({
-      id: 1,
-      userName: "",
-      targetExam: {
-        name: "",
-        date: null,
-        institution: "",
-        positions: 0,
-      },
-      schedule: {
-        weeklyHours: 20,
-        dailyDistribution: {
-          monday: 3,
-          tuesday: 3,
-          wednesday: 3,
-          thursday: 3,
-          friday: 3,
-          saturday: 3,
-          sunday: 2,
-        },
-        preferredStartTime: "06:00",
-        breakDuration: 10,
-        sessionBlockMinutes: 50,
-      },
-      fsrsParams: {
-        w: [
-          0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18,
-          0.05, 0.34, 1.26, 0.29, 2.61,
-        ],
-        requestRetention: 0.85,
-        maximumInterval: 365,
-        enableFuzz: true,
-      },
-      preferences: {
-        newCardsPerDay: 20,
-        maxReviewsPerDay: 200,
-        interleaveSubjects: true,
-        showAnswerTime: true,
-        enableSound: true,
-        theme: "system",
-      },
-      gamification: {
-        currentStreak: 0,
-        longestStreak: 0,
-        totalXP: 0,
-        level: 1,
-      },
-      tutor: {
-        mode: "active",
-        strictSubjectId: null,
-        lastMission: null,
-        lastRecalcAt: null,
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-  } else if (!config.tutor) {
-    await db.config.update(1, {
-      tutor: {
-        mode: "active",
-        strictSubjectId: null,
-        lastMission: null,
-        lastRecalcAt: null,
-      },
-    });
-  }
+  if (initPromise) return initPromise;
 
-  await seedSyllabus();
-  return true;
+  initPromise = (async () => {
+    try {
+      const config = await db.config.get(1);
+      if (!config) {
+        await db.config.add({
+          id: 1,
+          userName: "",
+          targetExam: {
+            name: "",
+            date: null,
+            institution: "",
+            positions: 0,
+          },
+          schedule: {
+            weeklyHours: 20,
+            dailyDistribution: {
+              monday: 3,
+              tuesday: 3,
+              wednesday: 3,
+              thursday: 3,
+              friday: 3,
+              saturday: 3,
+              sunday: 2,
+            },
+            preferredStartTime: "06:00",
+            breakDuration: 10,
+            sessionBlockMinutes: 50,
+          },
+          fsrsParams: {
+            w: [
+              0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94,
+              2.18, 0.05, 0.34, 1.26, 0.29, 2.61,
+            ],
+            requestRetention: 0.85,
+            maximumInterval: 365,
+            enableFuzz: true,
+          },
+          preferences: {
+            newCardsPerDay: 20,
+            maxReviewsPerDay: 200,
+            interleaveSubjects: true,
+            showAnswerTime: true,
+            enableSound: true,
+            theme: "system",
+          },
+          gamification: {
+            currentStreak: 0,
+            longestStreak: 0,
+            totalXP: 0,
+            level: 1,
+          },
+          tutor: {
+            mode: "active",
+            strictSubjectId: null,
+            lastMission: null,
+            lastRecalcAt: null,
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } else if (!config.tutor) {
+        await db.config.update(1, {
+          tutor: {
+            mode: "active",
+            strictSubjectId: null,
+            lastMission: null,
+            lastRecalcAt: null,
+          },
+        });
+      }
+
+      await seedSyllabus();
+      return true;
+    } catch (e) {
+      initPromise = null;
+      throw e;
+    }
+  })();
+
+  return initPromise;
 }
 
 export async function exportDatabase() {

@@ -1,16 +1,18 @@
 <script>
   import { onMount } from 'svelte';
-  import { subjectsStore, toast } from '$lib/stores';
+  import { subjectsStore, toast, uiStore } from '$lib/stores';
   import { db, initializeDatabase } from '$lib/db.js';
   import { seedStarterData } from '$lib/seed.js';
   import { clearDraft, loadDraft, saveDraft } from '$lib/utils/draft.js';
   import Card from '$lib/components/common/Card.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
 
   const SUBJECT_FORM_DRAFT_KEY = 'study.subjects.form.v1';
 
   let loading = true;
   let enableDraftSave = false;
+  let nameInputRef;
   let name = '';
   let weight = 10;
   let color = '#0ea5e9';
@@ -38,7 +40,7 @@
 
   async function addSubject() {
     if (!name.trim()) {
-      toast('Informe o nome da materia.', 'warning');
+      toast('Informe o nome da matéria.', 'warning');
       return;
     }
 
@@ -99,7 +101,12 @@
   }
 
   async function removeSubject(id) {
-    if (!confirm('Remover materia, topicos, aulas e cards relacionados?')) return;
+    const confirmed = await uiStore.confirm(
+      'Isso removerá permanentemente a matéria, todos os seus tópicos, aulas e cards vinculados.',
+      { title: 'Remover Matéria?', variant: 'danger', confirmLabel: 'Sim, Remover' }
+    );
+    if (!confirmed) return;
+    
     await subjectsStore.remove(id);
     toast('Materia removida.', 'success');
   }
@@ -107,7 +114,7 @@
   async function createDemoData() {
     const result = await seedStarterData();
     if (!result.created) {
-      toast('Ja existem materias cadastradas.', 'info');
+      toast('Já existem matérias cadastradas.', 'info');
       return;
     }
     await subjectsStore.load();
@@ -126,12 +133,24 @@
   </div>
 
   <Card padding="lg">
-    <h2 class="text-lg font-semibold mb-4">Nova materia</h2>
+    <h2 class="text-lg font-semibold mb-4">Nova matéria</h2>
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-      <input class="input" bind:value={name} placeholder="Nome da materia" />
-      <input class="input" type="number" min="1" max="100" bind:value={weight} placeholder="Peso no edital (%)" />
-      <input class="input" type="color" bind:value={color} />
-      <Button on:click={addSubject}>Adicionar</Button>
+      <div class="flex flex-col gap-1">
+        <label for="subject-name" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nome</label>
+        <input id="subject-name" class="input" bind:this={nameInputRef} bind:value={name} placeholder="Nome da matéria" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="subject-weight" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Peso (%)</label>
+        <input id="subject-weight" class="input" type="number" min="1" max="100" bind:value={weight} placeholder="Peso no edital" />
+        <span class="text-[9px] text-slate-400">Define prioridade no tutor</span>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="subject-color" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cor</label>
+        <input id="subject-color" class="input h-[42px]" type="color" bind:value={color} />
+      </div>
+      <div class="flex items-end">
+        <Button on:click={addSubject}>Adicionar</Button>
+      </div>
     </div>
   </Card>
 
@@ -142,7 +161,13 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
       </div>
     {:else if $subjectsStore.length === 0}
-      <p class="text-sm text-gray-500">Nenhuma materia ainda.</p>
+      <EmptyState
+        icon="📚"
+        title="Nenhuma matéria cadastrada"
+        description="Comece adicionando uma matéria para organizar seus estudos e criar seus primeiros flashcards."
+        actionLabel="Adicionar Matéria"
+        onAction={() => nameInputRef?.focus()}
+      />
     {:else}
       <div class="space-y-2">
         {#each $subjectsStore as subject}
@@ -160,7 +185,7 @@
                   <div>
                     <div class="font-medium">{subject.name}</div>
                     <div class="text-xs text-gray-500">
-                      peso {subject.weight}% · {subject.stats?.totalCards || 0} cards · proficiencia {subject.proficiencyLevel || 0}%
+                      peso {subject.weight}% · {subject.stats?.totalCards || 0} cards · proficiência {subject.proficiencyLevel || 0}%
                     </div>
                   </div>
                 {/if}

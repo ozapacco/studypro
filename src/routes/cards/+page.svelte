@@ -1,17 +1,19 @@
 <script>
   import { onMount } from 'svelte';
-  import { cardsStore, subjectsStore, toast } from '$lib/stores';
+  import { cardsStore, subjectsStore, toast, uiStore } from '$lib/stores';
   import { db, initializeDatabase } from '$lib/db.js';
   import { clearDraft, loadDraft, saveDraft } from '$lib/utils/draft.js';
   import Card from '$lib/components/common/Card.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
 
   const FORM_DRAFT_KEY = 'study.cards.form.v1';
   const FILTER_DRAFT_KEY = 'study.cards.filters.v1';
 
   let loading = true;
   let enableDraftSave = false;
+  let frontInputRef;
   let topics = [];
 
   let form = {
@@ -38,7 +40,7 @@
   const stateLabel = {
     new: 'novo',
     learning: 'aprendendo',
-    review: 'revisao',
+    review: 'revisão',
     relearning: 'reaprendendo'
   };
 
@@ -93,8 +95,16 @@
   }
 
   async function createCard() {
-    if (!form.front.trim() || !form.subjectId || !form.topicId) {
-      toast('Preencha frente, materia e topico.', 'warning');
+    if (!form.subjectId) {
+      toast('Selecione uma matéria.', 'warning');
+      return;
+    }
+    if (!form.topicId) {
+      toast('Selecione um tópico.', 'warning');
+      return;
+    }
+    if (!form.front.trim()) {
+      toast('Preencha a frente do card.', 'warning');
       return;
     }
 
@@ -133,7 +143,12 @@
   }
 
   async function deleteCard(card) {
-    if (!confirm('Remover este card?')) return;
+    const confirmed = await uiStore.confirm(
+      'Este card será removido permanentemente do seu banco de flashcards.',
+      { title: 'Remover Card?', variant: 'danger', confirmLabel: 'Sim, Remover' }
+    );
+    if (!confirmed) return;
+    
     await cardsStore.remove(card.id);
     await applyFilters();
     toast('Card removido.', 'success');
@@ -147,40 +162,61 @@
 <div class="max-w-7xl mx-auto px-4 py-8 space-y-6">
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold">Cards</h1>
-    <a class="text-sm text-primary-600 hover:text-primary-700" href="/subjects">Gerenciar materias</a>
+    <a class="text-sm text-primary-600 hover:text-primary-700" href="/subjects">Gerenciar matérias</a>
   </div>
 
   <Card padding="lg">
     <h2 class="text-lg font-semibold mb-4">Novo card</h2>
     <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-      <select class="input" bind:value={form.type}>
-        <option value="flashcard">Flashcard</option>
-        <option value="question">Questao</option>
-      </select>
+      <div class="flex flex-col gap-1">
+        <label for="card-type" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</label>
+        <select id="card-type" class="input" bind:value={form.type}>
+          <option value="flashcard">Flashcard</option>
+          <option value="question">Questão</option>
+        </select>
+      </div>
 
-      <select
-        class="input"
-        bind:value={form.subjectId}
-        disabled={loading || $subjectsStore.length === 0}
-        on:change={async () => {
-          await loadTopics();
-        }}
-      >
-        <option value="">{loading ? 'Carregando...' : 'Materia'}</option>
-        {#each $subjectsStore as subject}
-          <option value={String(subject.id)}>{subject.name}</option>
-        {/each}
-      </select>
+      <div class="flex flex-col gap-1">
+        <label for="card-subject" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Matéria</label>
+        <select
+          id="card-subject"
+          class="input"
+          bind:value={form.subjectId}
+          disabled={loading || $subjectsStore.length === 0}
+          on:change={async () => {
+            await loadTopics();
+          }}
+        >
+          <option value="">{loading ? 'Carregando...' : 'Matéria'}</option>
+          {#each $subjectsStore as subject}
+            <option value={String(subject.id)}>{subject.name}</option>
+          {/each}
+        </select>
+      </div>
 
-      <select class="input" bind:value={form.topicId} disabled={!form.subjectId || topics.length === 0}>
-        <option value="">{form.subjectId ? (topics.length === 0 ? 'Sem tópicos' : 'Topico') : 'Selecione materia'}</option>
-        {#each topics as topic}
-          <option value={String(topic.id)}>{topic.name}</option>
-        {/each}
-      </select>
+      <div class="flex flex-col gap-1">
+        <label for="card-topic" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tópico</label>
+        <select id="card-topic" class="input" bind:value={form.topicId} disabled={!form.subjectId || topics.length === 0}>
+          <option value="">{form.subjectId ? (topics.length === 0 ? 'Sem tópicos' : 'Tópico') : 'Selecione matéria'}</option>
+          {#each topics as topic}
+            <option value={String(topic.id)}>{topic.name}</option>
+          {/each}
+        </select>
+      </div>
 
-      <input class="input" bind:value={form.front} placeholder={form.type === 'question' ? 'Pergunta' : 'Frente'} />
-      <input class="input" bind:value={form.back} placeholder={form.type === 'question' ? 'Explicacao' : 'Verso'} />
+      <div class="flex flex-col gap-1">
+        <label for="card-front" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          {form.type === 'question' ? 'Pergunta' : 'Frente'}
+        </label>
+        <input id="card-front" class="input" bind:this={frontInputRef} bind:value={form.front} placeholder={form.type === 'question' ? 'Pergunta' : 'Frente'} />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="card-back" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          {form.type === 'question' ? 'Explicação' : 'Verso'}
+        </label>
+        <input id="card-back" class="input" bind:value={form.back} placeholder={form.type === 'question' ? 'Explicação' : 'Verso'} />
+      </div>
     </div>
     <div class="mt-4">
       <Button on:click={createCard}>Criar card</Button>
@@ -198,7 +234,7 @@
           on:input={applyFilters}
         />
         <select class="input w-44" bind:value={filters.subjectId} on:change={applyFilters}>
-          <option value="">Todas materias</option>
+          <option value="">Todas matérias</option>
           {#each $subjectsStore as subject}
             <option value={subject.id}>{subject.name}</option>
           {/each}
@@ -219,7 +255,15 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
       </div>
     {:else if $cardsStore.cards.length === 0}
-      <p class="text-sm text-gray-500">Nenhum card encontrado para os filtros.</p>
+      <EmptyState
+        icon="🗂️"
+        title="Nenhum card encontrado"
+        description={filters.searchQuery || filters.subjectId || filters.state 
+          ? "Tente ajustar seus filtros para encontrar o que procura." 
+          : "Comece criando seu primeiro flashcard para esta matéria."}
+        actionLabel={filters.searchQuery || filters.subjectId || filters.state ? "Limpar Filtros" : "Criar Primeiro Card"}
+        onAction={filters.searchQuery || filters.subjectId || filters.state ? clearFilters : () => frontInputRef?.focus()}
+      />
     {:else}
       <div class="space-y-2">
         {#each $cardsStore.cards as card}

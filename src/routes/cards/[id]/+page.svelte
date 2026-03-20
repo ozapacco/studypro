@@ -1,8 +1,8 @@
-﻿<script>
+<script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { cardsStore, subjectsStore, toast } from '$lib/stores';
+  import { cardsStore, subjectsStore, toast, uiStore } from '$lib/stores';
   import { db, initializeDatabase } from '$lib/db.js';
   import { clearDraft, loadDraft, saveDraft } from '$lib/utils/draft.js';
   import Card from '$lib/components/common/Card.svelte';
@@ -86,8 +86,16 @@
 
   async function save() {
     if (!card) return;
-    if (!form.front.trim() || !form.subjectId || !form.topicId) {
-      toast('Preencha frente/pergunta, materia e topico.', 'warning');
+    if (!form.subjectId) {
+      toast('Selecione uma matéria.', 'warning');
+      return;
+    }
+    if (!form.topicId) {
+      toast('Selecione um tópico.', 'warning');
+      return;
+    }
+    if (!form.front.trim()) {
+      toast('Preencha a frente do card.', 'warning');
       return;
     }
 
@@ -113,7 +121,12 @@
 
   async function removeCard() {
     if (!card) return;
-    if (!confirm('Deseja remover este card?')) return;
+    const confirmed = await uiStore.confirm(
+      'Este card será removido permanentemente. Esta ação não pode ser desfeita.',
+      { title: 'Remover Card?', variant: 'danger', confirmLabel: 'Sim, Remover' }
+    );
+    if (!confirmed) return;
+
     await cardsStore.remove(card.id);
     clearDraft(draftKey);
     toast('Card removido.', 'success');

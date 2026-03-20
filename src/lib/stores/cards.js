@@ -1,5 +1,7 @@
 import { writable } from 'svelte/store';
 import { db } from '../db.js';
+import { CardSchema } from '../utils/validation.js';
+import { toast } from './ui.js';
 
 function createCardsStore() {
   const { subscribe, update } = writable({
@@ -55,34 +57,47 @@ function createCardsStore() {
     },
 
     async add(cardData) {
-      const card = {
-        ...cardData,
-        state: 'new',
-        stability: 0,
-        difficulty: 5,
-        due: new Date().toISOString(),
-        reps: 0,
-        lapses: 0,
-        lastReview: null,
-        lastRating: null,
-        suspended: false,
-        buried: false,
-        flagged: false,
-        stats: {
-          totalReviews: 0,
-          correctCount: 0,
-          incorrectCount: 0,
-          averageTime: 0,
-          streak: 0
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      try {
+        const validated = CardSchema.parse({
+          ...cardData,
+          state: 'new',
+          difficulty: 5,
+          stability: 0,
+        });
 
-      const id = await db.cards.add(card);
-      update((state) => ({ ...state, cards: [...state.cards, { ...card, id }] }));
-      await this.updateSubjectStats(card.subjectId);
-      return id;
+        const card = {
+          ...validated,
+          due: new Date().toISOString(),
+          reps: 0,
+          lapses: 0,
+          lastReview: null,
+          lastRating: null,
+          suspended: false,
+          buried: false,
+          flagged: false,
+          stats: {
+            totalReviews: 0,
+            correctCount: 0,
+            incorrectCount: 0,
+            averageTime: 0,
+            streak: 0
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        const id = await db.cards.add(card);
+        update((state) => ({ ...state, cards: [...state.cards, { ...card, id }] }));
+        await this.updateSubjectStats(card.subjectId);
+        return id;
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Falha ao adicionar card.', 'error');
+        }
+        throw e;
+      }
     },
 
     async getById(id) {
@@ -90,12 +105,22 @@ function createCardsStore() {
     },
 
     async update(id, changes) {
-      const payload = { ...changes, updatedAt: new Date().toISOString() };
-      await db.cards.update(id, payload);
-      update((state) => ({
-        ...state,
-        cards: state.cards.map((card) => (card.id === id ? { ...card, ...payload } : card))
-      }));
+      try {
+        const validated = CardSchema.partial().parse(changes);
+        const payload = { ...validated, updatedAt: new Date().toISOString() };
+        await db.cards.update(id, payload);
+        update((state) => ({
+          ...state,
+          cards: state.cards.map((card) => (card.id === id ? { ...card, ...payload } : card))
+        }));
+      } catch (e) {
+        if (e.name === 'ZodError') {
+          toast(e.errors[0].message, 'warning');
+        } else {
+          toast('Falha ao atualizar card.', 'error');
+        }
+        throw e;
+      }
     },
 
     async remove(id) {
