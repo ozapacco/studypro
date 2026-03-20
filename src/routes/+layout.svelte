@@ -10,12 +10,12 @@
   let transitioning = false;
 
   const navItems = [
-    { href: '/', icon: 'Inicio', label: 'Painel' },
-    { href: '/study', icon: 'Estudo', label: 'Estudo' },
-    { href: '/cards', icon: 'Cartoes', label: 'Cartoes' },
-    { href: '/subjects', icon: 'Materias', label: 'Materias' },
-    { href: '/stats', icon: 'Dados', label: 'Estatisticas' },
-    { href: '/settings', icon: 'Ajustes', label: 'Configuracoes' }
+    { href: '/', icon: '🏠', label: 'Painel' },
+    { href: '/study', icon: '📚', label: 'Estudo' },
+    { href: '/cards', icon: '🗂️', label: 'Cartões' },
+    { href: '/subjects', icon: '📖', label: 'Matérias' },
+    { href: '/stats', icon: '📊', label: 'Estatísticas' },
+    { href: '/settings', icon: '⚙️', label: 'Ajustes' }
   ];
 
   onMount(async () => {
@@ -48,10 +48,10 @@
       {#each navItems as item}
         <a
           href={item.href}
-          class="flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
         >
+          <span class="text-base leading-none" aria-hidden="true">{item.icon}</span>
           <span class="font-medium">{item.label}</span>
-          <span class="text-xs opacity-60">{item.icon}</span>
         </a>
       {/each}
     </nav>

@@ -13,7 +13,7 @@
 | **Criado por** | Equipe de Auditoria (3 Agentes) |
 | **Categoria** | `BUG` `UX` |
 | **Prioridade** | 🟡 P1 — Importante |
-| **Status** | ⏸️ Pendente |
+| **Status** | ✅ Concluída (2026-03-20) |
 | **Estimativa** | 30min |
 | **Responsável** | — |
 
@@ -175,11 +175,11 @@ Aproveitar a correção para garantir que os rótulos usam acentuação e grafia
 
 | Campo | Valor |
 |---|---|
-| **Executado por** | — |
-| **Data início** | — |
-| **Data fim** | — |
-| **Tempo real gasto** | — |
-| **Status final** | — |
+| **Executado por** | Codex (GPT-5) |
+| **Data início** | 2026-03-20 |
+| **Data fim** | 2026-03-20 |
+| **Tempo real gasto** | ~20min |
+| **Status final** | ✅ Concluída |
 
 **Observações:**
 > —
@@ -191,3 +191,4 @@ Aproveitar a correção para garantir que os rótulos usam acentuação e grafia
 | Data | Alteração | Por |
 |---|---|---|
 | 2026-03-19 | Task criada após auditoria de 3 agentes | Equipe de Auditoria |
+| 2026-03-20 | Correção aplicada em src/routes/+layout.svelte para remover rótulos duplicados e normalizar ícones/rótulos | Codex (GPT-5) |
