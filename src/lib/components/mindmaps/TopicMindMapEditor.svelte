@@ -15,16 +15,21 @@
 
   $: hasChanges = pumlCode !== (topic?.mindMapPuml || '');
 
-  function generateMindMapTemplate() {
-    const base = `@startmindmap
-* ${topic?.name || 'Topico'}
-** Conceito 1
-*** Sub-conceito A
-*** Sub-conceito B
-** Conceito 2
-*** Sub-conceito C
-** Conceito 3
-@endmindmap`;
+  async function generateSmartTemplate() {
+    if (!topic?.id) return;
+    const lessons = await db.lessons.where('topicId').equals(topic.id).sortBy('order');
+    
+    let base = `@startmindmap\n* ${topic?.name || 'Topico'}\n`;
+    
+    if (lessons.length > 0) {
+      lessons.forEach(l => {
+        base += `** ${l.title}\n`;
+      });
+    } else {
+      base += `** Conceito 1\n*** Sub-conceito A\n*** Sub-conceito B\n** Conceito 2\n`;
+    }
+    
+    base += `@endmindmap`;
     pumlCode = base;
   }
 
@@ -112,7 +117,8 @@ title ${topic?.name || 'Topico'}
       <!-- Templates -->
       <div class="templates-bar">
         <span class="templates-label">Templates:</span>
-        <button class="tpl-btn" on:click={generateMindMapTemplate}>🧠 Mapa Mental</button>
+        <button class="tpl-btn smart" on:click={generateSmartTemplate} title="Gerar baseado nas aulas">✨ Smart</button>
+        <button class="tpl-btn" on:click={() => generateSmartTemplate()}>🧠 Mapa Mental</button>
         <button class="tpl-btn" on:click={generateFlowTemplate}>🔄 Fluxo</button>
         <button class="tpl-btn" on:click={generateTimelineTemplate}>📅 Linha do Tempo</button>
         <button class="tpl-btn danger" on:click={clearMap}>🗑️ Limpar</button>
@@ -275,6 +281,8 @@ Links uteis:
   }
   :global(.dark) .tpl-btn { background: #1e293b; border-color: #334155; color: #94a3b8; }
   .tpl-btn:hover { border-color: #6366f1; color: #6366f1; }
+  .tpl-btn.smart { border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.05); }
+  .tpl-btn.smart:hover { background: rgba(16, 185, 129, 0.1); border-color: #059669; }
   .tpl-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
 
   /* Code editor */

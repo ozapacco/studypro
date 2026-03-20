@@ -158,6 +158,9 @@ stop
       <div class="map-header">
         <span class="map-label">🧠 Mapa Mental</span>
         <div class="map-actions">
+          {#if imgUrl}
+            <button class="action-btn" on:click={() => { navigator.clipboard.writeText(imgUrl); }} title="Copiar link da imagem">🔗 Link</button>
+          {/if}
           {#if showRaw}
             <button class="action-btn" on:click={() => showRaw = false} title="Ocultar codigo">👁️ Visualizar</button>
           {:else}
