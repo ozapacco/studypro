@@ -8,11 +8,11 @@
 
 | Feature              | Status Atual  | Complexidade | Impacto |
 | -------------------- | ------------- | ------------ | ------- |
-| 1. Tutor Ativo       | ❌ Passivo    | 🔴 Alta      | 🔴🔴🔴  |
-| 2. Domínio do Edital | ⚠️ Parcial    | 🟡 Média     | 🔴🔴    |
-| 3. Mapas PlantUML    | ❌ Não existe | 🟡 Média     | 🔴🔴    |
-| 4. Fluxo Fechado     | ⚠️ Parcial    | 🟡 Média     | 🔴🔴🔴  |
-| 5. Forte vs Fraco    | ⚠️ Parcial    | 🟡 Média     | 🔴🔴    |
+| 1. Tutor Ativo       | ✅ Ativo     | 🔴 Alta      | 🔴🔴🔴  |
+| 2. Domínio do Edital | ✅ Completo  | 🟡 Média     | 🔴🔴    |
+| 3. Mapas PlantUML    | ✅ Completo+ | 🟡 Média     | 🔴🔴    |
+| 4. Fluxo Fechado     | 🟡 Parcial   | 🟡 Média     | 🔴🔴🔴  |
+| 5. Forte vs Fraco    | 🟡 Parcial   | 🟡 Média     | 🔴🔴    |
 
 **Fases:** 5 fases sequenciais. A Fase 1 é pré-requisito para todas as outras.
 **Tempo estimado:** 3-4 semanas (desenvolvimento paralelo de Fases 2-5).
