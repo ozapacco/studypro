@@ -25,7 +25,7 @@
     class="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-4
            bg-white dark:bg-slate-800 text-sm resize-none focus:outline-none
            focus:border-primary-500 transition-colors font-medium"
-  />
+  ></textarea>
 
   {#if !showHint}
     <button 

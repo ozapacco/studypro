@@ -34,36 +34,36 @@
 
 <style>
   /* Interactive card with hover/active states */
-  .card-interactive {
+  :global(.card-interactive) {
     transition: all 0.15s ease-in-out;
   }
 
-  .card-interactive:hover {
+  :global(.card-interactive:hover) {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
   }
 
-  :global(.dark) .card-interactive:hover {
+  :global(.dark .card-interactive:hover) {
     box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
   }
 
-  .card-interactive:active {
+  :global(.card-interactive:active) {
     transform: translateY(0);
     box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.1);
   }
 
-  :global(.dark) .card-interactive:active {
+  :global(.dark .card-interactive:active) {
     box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3);
   }
 
   /* Active/success state */
-  .card-active {
+  :global(.card-active) {
     border-color: #6366f1;
     background: #f5f3ff;
   }
 
-  :global(.dark) .card-active {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: #6366f1;
+  :global(.dark .card-active) {
+    background: rgba(99, 102, 241, 0.1) !important;
+    border-color: #6366f1 !important;
   }
 </style>

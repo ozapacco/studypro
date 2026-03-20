@@ -19,6 +19,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 <div
   {...$$restProps}
   class={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${paddings[padding]} ${hover ? 'hover:shadow-md transition-shadow duration-200' : ''} ${clickable ? 'cursor-pointer' : ''} ${clickable ? 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900' : ''}`}
